@@ -17,16 +17,16 @@ import (
 
 // Config is an in memory representation of the filecoin configuration file
 type Config struct {
-	API       *APIConfig         `json:"api"`
-	Bootstrap *BootstrapConfig   `json:"bootstrap"`
-	Datastore *DatastoreConfig   `json:"datastore"`
-	Swarm     *SwarmConfig       `json:"swarm"`
-	Mining    *MiningConfig      `json:"mining"`
-	Wallet    *WalletConfig      `json:"wallet"`
-	Heartbeat *HeartbeatConfig   `json:"heartbeat"`
-	Net       string             `json:"net"`
-	Metrics   *MetricsConfig     `json:"metrics"`
-	Mpool     *MessagePoolConfig `json:"mpool"`
+	API           *APIConfig           `json:"api"`
+	Bootstrap     *BootstrapConfig     `json:"bootstrap"`
+	Datastore     *DatastoreConfig     `json:"datastore"`
+	Swarm         *SwarmConfig         `json:"swarm"`
+	Mining        *MiningConfig        `json:"mining"`
+	Wallet        *WalletConfig        `json:"wallet"`
+	Heartbeat     *HeartbeatConfig     `json:"heartbeat"`
+	Net           string               `json:"net"`
+	Mpool         *MessagePoolConfig   `json:"mpool"`
+	Observability *ObservabilityConfig `json:"observability"`
 }
 
 // APIConfig holds all configuration options related to the api.
@@ -150,6 +150,18 @@ func newDefaultHeartbeatConfig() *HeartbeatConfig {
 	}
 }
 
+type ObservabilityConfig struct {
+	Metrics *MetricsConfig `json:"metrics"`
+	Tracing *TraceConfig   `json:"tracing"`
+}
+
+func newDefaultObservabilityConfig() *ObservabilityConfig {
+	return &ObservabilityConfig{
+		Metrics: newDefaultMetricsConfig(),
+		Tracing: newDefaultTraceConfig(),
+	}
+}
+
 // MetricsConfig holds all configuration options related to node metrics.
 type MetricsConfig struct {
 	// Enabled will enable prometheus metrics when true.
@@ -165,6 +177,23 @@ func newDefaultMetricsConfig() *MetricsConfig {
 		PrometheusEnabled:  false,
 		ReportInterval:     "5s",
 		PrometheusEndpoint: "/ip4/0.0.0.0/tcp/9400",
+	}
+}
+
+type TraceConfig struct {
+	// JaegerEndpoint is the URL traces are collected on.
+	JaegerEndpoint string `json:"jaegerEndpoint"`
+	// JaegerTracingEnabled will enable exporting traces to jaeger when true.
+	JaegerTracingEnabled bool `json:"jaegerTracingEnabled"`
+	// ProbabilitySampler will sample fraction of traces, 1.0 will sample all traces.
+	ProbabilitySampler float64 `json:"probabilitySampler"`
+}
+
+func newDefaultTraceConfig() *TraceConfig {
+	return &TraceConfig{
+		JaegerEndpoint:       "http://localhost:14268/api/traces",
+		JaegerTracingEnabled: false,
+		ProbabilitySampler:   1.0,
 	}
 }
 
@@ -187,16 +216,16 @@ func newDefaultMessagePoolConfig() *MessagePoolConfig {
 // their default values
 func NewDefaultConfig() *Config {
 	return &Config{
-		API:       newDefaultAPIConfig(),
-		Bootstrap: newDefaultBootstrapConfig(),
-		Datastore: newDefaultDatastoreConfig(),
-		Swarm:     newDefaultSwarmConfig(),
-		Mining:    newDefaultMiningConfig(),
-		Wallet:    newDefaultWalletConfig(),
-		Heartbeat: newDefaultHeartbeatConfig(),
-		Net:       "",
-		Metrics:   newDefaultMetricsConfig(),
-		Mpool:     newDefaultMessagePoolConfig(),
+		API:           newDefaultAPIConfig(),
+		Bootstrap:     newDefaultBootstrapConfig(),
+		Datastore:     newDefaultDatastoreConfig(),
+		Swarm:         newDefaultSwarmConfig(),
+		Mining:        newDefaultMiningConfig(),
+		Wallet:        newDefaultWalletConfig(),
+		Heartbeat:     newDefaultHeartbeatConfig(),
+		Net:           "",
+		Mpool:         newDefaultMessagePoolConfig(),
+		Observability: newDefaultObservabilityConfig(),
 	}
 }
 

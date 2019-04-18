@@ -81,14 +81,21 @@ func TestWriteFile(t *testing.T) {
 		"nickname": ""
 	},
 	"net": "",
-	"metrics": {
-		"prometheusEnabled": false,
-		"reportInterval": "5s",
-		"prometheusEndpoint": "/ip4/0.0.0.0/tcp/9400"
-	},
 	"mpool": {
 		"maxPoolSize": 10000,
 		"maxNonceGap": "100"
+	},
+	"observability": {
+		"metrics": {
+			"prometheusEnabled": false,
+			"reportInterval": "5s",
+			"prometheusEndpoint": "/ip4/0.0.0.0/tcp/9400"
+		},
+		"tracing": {
+			"jaegerEndpoint": "http://localhost:14268/api/traces",
+			"jaegerTracingEnabled": false,
+			"probabilitySampler": 1
+		}
 	}
 }`,
 		string(content),
