@@ -8,12 +8,13 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
 	mh "github.com/multiformats/go-multihash"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/address"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestStatePutGet(t *testing.T) {
@@ -128,6 +129,7 @@ func TestGetAllActors(t *testing.T) {
 	tf.UnitTest(t)
 
 	assert := assert.New(t)
+	require := require.New(t)
 	ctx := context.Background()
 	cst := hamt.NewCborStore()
 	tree := NewEmptyStateTree(cst)
@@ -135,9 +137,9 @@ func TestGetAllActors(t *testing.T) {
 
 	actor := actor.Actor{Code: types.AccountActorCodeCid, Nonce: 1234, Balance: types.NewAttoFILFromFIL(123)}
 	err := tree.SetActor(ctx, addr, &actor)
-	tree.Flush(ctx)
-
 	assert.NoError(err)
+	_, err = tree.Flush(ctx)
+	require.NoError(err)
 
 	results := GetAllActors(ctx, tree)
 

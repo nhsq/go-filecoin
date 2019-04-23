@@ -5,18 +5,22 @@ import (
 	"testing"
 
 	"github.com/ipfs/go-datastore"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestDSBackendSimple(t *testing.T) {
 	tf.UnitTest(t)
 
 	assert := assert.New(t)
+	require := require.New(t)
 
 	ds := datastore.NewMapDatastore()
-	defer ds.Close()
+	defer func() {
+		require.NoError(ds.Close())
+	}()
 
 	fs, err := NewDSBackend(ds)
 	assert.NoError(err)
@@ -42,9 +46,12 @@ func TestDSBackendKeyPairMatchAddress(t *testing.T) {
 	tf.UnitTest(t)
 
 	assert := assert.New(t)
+	require := require.New(t)
 
 	ds := datastore.NewMapDatastore()
-	defer ds.Close()
+	defer func() {
+		require.NoError(ds.Close())
+	}()
 
 	fs, err := NewDSBackend(ds)
 	assert.NoError(err)
@@ -71,15 +78,20 @@ func TestDSBackendErrorsForUnknownAddress(t *testing.T) {
 	tf.UnitTest(t)
 
 	assert := assert.New(t)
+	require := require.New(t)
 
 	// create 2 backends
 	ds1 := datastore.NewMapDatastore()
-	defer ds1.Close()
+	defer func() {
+		require.NoError(ds1.Close())
+	}()
 	fs1, err := NewDSBackend(ds1)
 	assert.NoError(err)
 
 	ds2 := datastore.NewMapDatastore()
-	defer ds2.Close()
+	defer func() {
+		require.NoError(ds2.Close())
+	}()
 	fs2, err := NewDSBackend(ds2)
 	assert.NoError(err)
 
@@ -108,9 +120,12 @@ func TestDSBackendParallel(t *testing.T) {
 	tf.UnitTest(t)
 
 	assert := assert.New(t)
+	require := require.New(t)
 
 	ds := datastore.NewMapDatastore()
-	defer ds.Close()
+	defer func() {
+		require.NoError(ds.Close())
+	}()
 
 	fs, err := NewDSBackend(ds)
 	assert.NoError(err)

@@ -130,7 +130,7 @@ func (env *TestEnvironment) RequireNewNodeConnected() *fast.Filecoin {
 	return p
 }
 
-// RequireNodeNodeWithFunds builds a new node using RequireNewNodeStarted, then
+// RequireNewNodeWithFunds builds a new node using RequireNewNodeStarted, then
 // sends it funds from the environment GenesisMiner node
 func (env *TestEnvironment) RequireNewNodeWithFunds(funds int) *fast.Filecoin {
 	require := require.New(env.t)

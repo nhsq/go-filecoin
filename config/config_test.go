@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
@@ -30,10 +31,13 @@ func TestWriteFile(t *testing.T) {
 	tf.UnitTest(t)
 
 	assert := assert.New(t)
+	require := require.New(t)
 
 	dir, err := ioutil.TempDir("", "config")
 	assert.NoError(err)
-	defer os.RemoveAll(dir)
+	defer func() {
+		require.NoError(os.RemoveAll(dir))
+	}()
 
 	cfg := NewDefaultConfig()
 
@@ -120,10 +124,13 @@ func TestConfigRoundtrip(t *testing.T) {
 	tf.UnitTest(t)
 
 	assert := assert.New(t)
+	require := require.New(t)
 
 	dir, err := ioutil.TempDir("", "config")
 	assert.NoError(err)
-	defer os.RemoveAll(dir)
+	defer func() {
+		require.NoError(os.RemoveAll(dir))
+	}()
 
 	cfg := NewDefaultConfig()
 
@@ -141,6 +148,7 @@ func TestConfigReadFileDefaults(t *testing.T) {
 
 	t.Run("all sections exist", func(t *testing.T) {
 		assert := assert.New(t)
+		require := require.New(t)
 
 		cfgpath, cleaner, err := createConfigFile(`
 		{
@@ -153,7 +161,9 @@ func TestConfigReadFileDefaults(t *testing.T) {
 			}
 		}`)
 		assert.NoError(err)
-		defer cleaner()
+		defer func() {
+			require.NoError(cleaner())
+		}()
 		cfg, err := ReadFile(cfgpath)
 		assert.NoError(err)
 
@@ -163,6 +173,7 @@ func TestConfigReadFileDefaults(t *testing.T) {
 
 	t.Run("missing one section", func(t *testing.T) {
 		assert := assert.New(t)
+		require := require.New(t)
 
 		cfgpath, cleaner, err := createConfigFile(`
 		{
@@ -172,7 +183,9 @@ func TestConfigReadFileDefaults(t *testing.T) {
 			}
 		}`)
 		assert.NoError(err)
-		defer cleaner()
+		defer func() {
+			require.NoError(cleaner())
+		}()
 		cfg, err := ReadFile(cfgpath)
 		assert.NoError(err)
 
@@ -182,10 +195,13 @@ func TestConfigReadFileDefaults(t *testing.T) {
 
 	t.Run("empty file", func(t *testing.T) {
 		assert := assert.New(t)
+		require := require.New(t)
 
 		cfgpath, cleaner, err := createConfigFile("")
 		assert.NoError(err)
-		defer cleaner()
+		defer func() {
+			require.NoError(cleaner())
+		}()
 		cfg, err := ReadFile(cfgpath)
 		assert.NoError(err)
 
@@ -276,6 +292,7 @@ func TestConfigSet(t *testing.T) {
 
 	t.Run("set table value", func(t *testing.T) {
 		assert := assert.New(t)
+		require := require.New(t)
 		cfg := NewDefaultConfig()
 
 		jsonBlob := `{"type": "badgerbadgerbadgerds", "path": "mushroom-mushroom"}`
@@ -286,7 +303,9 @@ func TestConfigSet(t *testing.T) {
 
 		cfg1path, cleaner, err := createConfigFile(fmt.Sprintf(`{"datastore": %s}`, jsonBlob))
 		assert.NoError(err)
-		defer cleaner()
+		defer func() {
+			require.NoError(cleaner())
+		}()
 
 		cfg1, err := ReadFile(cfg1path)
 		assert.NoError(err)
@@ -348,7 +367,7 @@ path = "mushroom-mushroom"}`
 	})
 }
 
-func createConfigFile(content string) (string, func(), error) {
+func createConfigFile(content string) (string, func() error, error) {
 	dir, err := ioutil.TempDir("", "config")
 	if err != nil {
 		return "", nil, err
@@ -359,5 +378,7 @@ func createConfigFile(content string) (string, func(), error) {
 		return "", nil, err
 	}
 
-	return cfgpath, func() { os.RemoveAll(dir) }, nil
+	return cfgpath, func() error {
+		return os.RemoveAll(dir)
+	}, nil
 }

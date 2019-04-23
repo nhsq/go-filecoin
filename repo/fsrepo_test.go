@@ -76,10 +76,13 @@ func TestFSRepoInit(t *testing.T) {
 	tf.UnitTest(t)
 
 	assert := assert.New(t)
+	require := require.New(t)
 
 	dir, err := ioutil.TempDir("", "")
 	assert.NoError(err)
-	defer os.RemoveAll(dir)
+	defer func() {
+		require.NoError(os.RemoveAll(dir))
+	}()
 
 	t.Log("init FSRepo")
 	assert.NoError(InitFSRepo(dir, config.NewDefaultConfig()))
@@ -122,10 +125,13 @@ func TestFSRepoOpen(t *testing.T) {
 
 	t.Run("[fail] repo version newer than binary", func(t *testing.T) {
 		assert := assert.New(t)
+		require := require.New(t)
 
 		dir, err := ioutil.TempDir("", "")
 		assert.NoError(err)
-		defer os.RemoveAll(dir)
+		defer func() {
+			require.NoError(os.RemoveAll(dir))
+		}()
 
 		assert.NoError(InitFSRepo(dir, config.NewDefaultConfig()))
 
@@ -170,10 +176,13 @@ func TestFSRepoRoundtrip(t *testing.T) {
 	tf.UnitTest(t)
 
 	assert := assert.New(t)
+	require := require.New(t)
 
 	dir, err := ioutil.TempDir("", "")
 	assert.NoError(err)
-	defer os.RemoveAll(dir)
+	defer func() {
+		require.NoError(os.RemoveAll(dir))
+	}()
 
 	cfg := config.NewDefaultConfig()
 	cfg.API.Address = "foo" // testing that what we get back isnt just the default
@@ -204,7 +213,9 @@ func TestFSRepoReplaceAndSnapshotConfig(t *testing.T) {
 
 	dir, err := ioutil.TempDir("", "")
 	require.NoError(err)
-	defer os.RemoveAll(dir)
+	defer func() {
+		require.NoError(os.RemoveAll(dir))
+	}()
 
 	cfg := config.NewDefaultConfig()
 	cfg.API.Address = "foo"
@@ -242,10 +253,13 @@ func TestRepoLock(t *testing.T) {
 	tf.UnitTest(t)
 
 	assert := assert.New(t)
+	require := require.New(t)
 
 	dir, err := ioutil.TempDir("", "")
 	assert.NoError(err)
-	defer os.RemoveAll(dir)
+	defer func() {
+		require.NoError(os.RemoveAll(dir))
+	}()
 
 	cfg := config.NewDefaultConfig()
 	assert.NoError(err, InitFSRepo(dir, cfg))
@@ -269,10 +283,13 @@ func TestRepoLockFail(t *testing.T) {
 	tf.UnitTest(t)
 
 	assert := assert.New(t)
+	require := require.New(t)
 
 	dir, err := ioutil.TempDir("", "")
 	assert.NoError(err)
-	defer os.RemoveAll(dir)
+	defer func() {
+		require.NoError(os.RemoveAll(dir))
+	}()
 
 	cfg := config.NewDefaultConfig()
 	assert.NoError(err, InitFSRepo(dir, cfg))
@@ -343,6 +360,7 @@ func TestRepoAPIFile(t *testing.T) {
 	t.Run("Close deletes API file", func(t *testing.T) {
 
 		assert := assert.New(t)
+		require := require.New(t)
 
 		withFSRepo(t, func(r *FSRepo) {
 			mustSetAPIAddr(t, r, "/ip4/127.0.0.1/tcp/1234")
@@ -351,7 +369,7 @@ func TestRepoAPIFile(t *testing.T) {
 			assert.NoError(err)
 			assert.Equal(APIFile, info.Name())
 
-			r.Close()
+			require.NoError(r.Close())
 
 			_, err = os.Stat(filepath.Join(r.path, APIFile))
 			assert.Error(err)
@@ -396,9 +414,12 @@ func TestCreateRepo(t *testing.T) {
 	t.Run("successfully creates when directory exists", func(t *testing.T) {
 
 		assert := assert.New(t)
+		require := require.New(t)
 		dir, err := ioutil.TempDir("", "init")
 		assert.NoError(err)
-		defer os.RemoveAll(dir)
+		defer func() {
+			require.NoError(os.RemoveAll(dir))
+		}()
 
 		_, err = CreateRepo(dir, cfg)
 		assert.NoError(err)
@@ -409,10 +430,13 @@ func TestCreateRepo(t *testing.T) {
 	t.Run("successfully creates when directory does not exist", func(t *testing.T) {
 
 		assert := assert.New(t)
+		require := require.New(t)
 
 		dir, err := ioutil.TempDir("", "init")
 		assert.NoError(err)
-		defer os.RemoveAll(dir)
+		defer func() {
+			require.NoError(os.RemoveAll(dir))
+		}()
 
 		dir = filepath.Join(dir, "nested")
 
@@ -425,9 +449,12 @@ func TestCreateRepo(t *testing.T) {
 	t.Run("fails with error if directory is not writeable", func(t *testing.T) {
 
 		assert := assert.New(t)
+		require := require.New(t)
 		parentDir, err := ioutil.TempDir("", "init")
 		assert.NoError(err)
-		defer os.RemoveAll(parentDir)
+		defer func() {
+			require.NoError(os.RemoveAll(parentDir))
+		}()
 
 		// make read only dir
 		dir := filepath.Join(parentDir, "readonly")
@@ -442,10 +469,13 @@ func TestCreateRepo(t *testing.T) {
 	t.Run("fails with error if config file already exists", func(t *testing.T) {
 
 		assert := assert.New(t)
+		require := require.New(t)
 
 		dir, err := ioutil.TempDir("", "init")
 		assert.NoError(err)
-		defer os.RemoveAll(dir)
+		defer func() {
+			require.NoError(os.RemoveAll(dir))
+		}()
 
 		err = ioutil.WriteFile(filepath.Join(dir, "config.json"), []byte("hello"), 0644)
 		assert.NoError(err)
@@ -462,7 +492,9 @@ func withFSRepo(t *testing.T, f func(*FSRepo)) {
 
 	dir, err := ioutil.TempDir("", "")
 	require.NoError(err)
-	defer os.RemoveAll(dir)
+	defer func() {
+		require.NoError(os.RemoveAll(dir))
+	}()
 
 	cfg := config.NewDefaultConfig()
 	require.NoError(err, InitFSRepo(dir, cfg))
