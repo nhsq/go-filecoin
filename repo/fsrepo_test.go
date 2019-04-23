@@ -1,6 +1,7 @@
 package repo
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -68,6 +69,9 @@ const (
 	"mpool": {
 		"maxPoolSize": 10000,
 		"maxNonceGap": "100"
+	},
+	"sectorbase": {
+		"rootdir": ""
 	}
 }`
 )
@@ -76,6 +80,8 @@ func TestFSRepoInit(t *testing.T) {
 	tf.UnitTest(t)
 
 	dir, err := ioutil.TempDir("", "")
+
+	repoPath := filepath.Join(dir, "repo")
 	assert.NoError(t, err)
 	defer os.RemoveAll(dir)
 
@@ -124,6 +130,7 @@ func TestFSRepoOpen(t *testing.T) {
 		assert.NoError(t, InitFSRepo(dir, config.NewDefaultConfig()))
 
 		// set wrong version
+
 		assert.NoError(t, ioutil.WriteFile(filepath.Join(dir, versionFilename), []byte("2"), 0644))
 
 		_, err = OpenFSRepo(dir)
@@ -137,12 +144,14 @@ func TestFSRepoOpen(t *testing.T) {
 		assert.NoError(t, InitFSRepo(dir, config.NewDefaultConfig()))
 
 		// set wrong version
+
 		assert.NoError(t, ioutil.WriteFile(filepath.Join(dir, versionFilename), []byte("0"), 0644))
 		_, err = OpenFSRepo(dir)
 		assert.EqualError(t, err, "out of date repo version, got 0 expected 1. Migrate with tools/migration/go-filecoin-migrate")
 	})
 	t.Run("[fail] version corrupt", func(t *testing.T) {
 		dir, err := ioutil.TempDir("", "")
+
 		assert.NoError(t, err)
 		defer os.RemoveAll(dir)
 
@@ -165,6 +174,7 @@ func TestFSRepoRoundtrip(t *testing.T) {
 
 	cfg := config.NewDefaultConfig()
 	cfg.API.Address = "foo" // testing that what we get back isnt just the default
+
 	assert.NoError(t, err, InitFSRepo(dir, cfg))
 
 	r, err := OpenFSRepo(dir)
@@ -215,6 +225,7 @@ func TestFSRepoReplaceAndSnapshotConfig(t *testing.T) {
 
 	// assert that a single snapshot was created when replacing the config
 	// get the snapshot file name
+
 	snpFiles := getSnapshotFilenames(t, filepath.Join(dir, snapshotStorePrefix))
 	require.Equal(t, 1, len(snpFiles))
 
@@ -236,15 +247,16 @@ func TestRepoLock(t *testing.T) {
 	r, err := OpenFSRepo(dir)
 	assert.NoError(t, err)
 
-	assert.FileExists(t, filepath.Join(r.path, lockFile))
+	assert.FileExists(t, filepath.Join(r.repoPath, lockFile))
 
+	fmt.Printf("r.repoPath: %s, r.rootPath: %s\n", r.repoPath, r.rootPath)
 	_, err = OpenFSRepo(dir)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to take repo lock")
 
 	assert.NoError(t, r.Close())
 
-	_, err = os.Lstat(filepath.Join(r.path, lockFile))
+	_, err = os.Lstat(filepath.Join(r.repoPath, lockFile))
 	assert.True(t, os.IsNotExist(err))
 }
 
@@ -316,13 +328,13 @@ func TestRepoAPIFile(t *testing.T) {
 		withFSRepo(t, func(r *FSRepo) {
 			mustSetAPIAddr(t, r, "/ip4/127.0.0.1/tcp/1234")
 
-			info, err := os.Stat(filepath.Join(r.path, APIFile))
+			info, err := os.Stat(filepath.Join(r.repoPath, APIFile))
 			assert.NoError(t, err)
 			assert.Equal(t, APIFile, info.Name())
 
 			r.Close()
 
-			_, err = os.Stat(filepath.Join(r.path, APIFile))
+			_, err = os.Stat(filepath.Join(r.repoPath, APIFile))
 			assert.Error(t, err)
 		})
 	})
@@ -331,7 +343,7 @@ func TestRepoAPIFile(t *testing.T) {
 		withFSRepo(t, func(r *FSRepo) {
 			mustSetAPIAddr(t, r, "/ip4/127.0.0.1/tcp/1234")
 
-			err := os.Remove(filepath.Join(r.path, APIFile))
+			err := os.Remove(filepath.Join(r.repoPath, APIFile))
 			assert.NoError(t, err)
 
 			assert.NoError(t, r.Close())
@@ -341,7 +353,7 @@ func TestRepoAPIFile(t *testing.T) {
 	t.Run("SetAPI fails if unable to create API file", func(t *testing.T) {
 		withFSRepo(t, func(r *FSRepo) {
 			// create a file with permission bits that prevent us from truncating
-			err := ioutil.WriteFile(filepath.Join(r.path, APIFile), []byte("/ip4/127.0.0.1/tcp/9999"), 0000)
+			err := ioutil.WriteFile(filepath.Join(r.repoPath, APIFile), []byte("/ip4/127.0.0.1/tcp/9999"), 0000)
 			assert.NoError(t, err)
 
 			// try to os.Create to same path - will see a failure
@@ -358,6 +370,7 @@ func TestCreateRepo(t *testing.T) {
 
 	t.Run("successfully creates when directory exists", func(t *testing.T) {
 		dir, err := ioutil.TempDir("", "init")
+
 		assert.NoError(t, err)
 		defer os.RemoveAll(dir)
 

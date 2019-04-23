@@ -49,7 +49,7 @@ var daemonCmd = &cmds.Command{
 
 func daemonRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 	// third precedence is config file.
-	rep, err := getRepo(req)
+	rep, srep, err := getRepo(req)
 	if err != nil {
 		return err
 	}
@@ -72,7 +72,7 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment)
 		rep.Config().Swarm.PublicRelayAddress = publicRelayAddress
 	}
 
-	opts, err := node.OptionsFromRepo(rep)
+	opts, err := node.OptionsFromRepo(rep, srep)
 	if err != nil {
 		return err
 	}
@@ -117,10 +117,11 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment)
 	return runAPIAndWait(req.Context, fcn, rep.Config(), req)
 }
 
-func getRepo(req *cmds.Request) (repo.Repo, error) {
+func getRepo(req *cmds.Request) (repo.Repo, repo.SectorRepo, error) {
 	repoDir, _ := req.Options[OptionRepoDir].(string)
-	repoDir = repo.GetRepoDir(repoDir)
-	return repo.OpenFSRepo(repoDir)
+	repoDir = repo.GetRootDir(repoDir)
+	r, err := repo.OpenFSRepo(repoDir)
+	return r, r, err
 }
 
 func runAPIAndWait(ctx context.Context, nd *node.Node, config *config.Config, req *cmds.Request) error {

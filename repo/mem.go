@@ -119,19 +119,21 @@ func (mr *MemRepo) Close() error {
 }
 
 // StagingDir implements node.StagingDir.
-func (mr *MemRepo) StagingDir() string {
-	return mr.stagingDir
+func (mr *MemRepo) StagingDir() (string, error) {
+	return mr.stagingDir, nil
 }
 
 // SealedDir implements node.SectorDirs.
-func (mr *MemRepo) SealedDir() string {
-	return mr.sealedDir
+func (mr *MemRepo) SealedDir() (string, error) {
+	return mr.sealedDir, nil
 }
 
 // CleanupSectorDirs removes all sector directories and their contents.
 func (mr *MemRepo) CleanupSectorDirs() {
-	os.RemoveAll(mr.StagingDir()) // nolint: errcheck
-	os.RemoveAll(mr.SealedDir())  // nolint:errcheck
+	stage, _ := mr.StagingDir()
+	seal, _ := mr.SealedDir()
+	os.RemoveAll(stage) // nolint: errcheck
+	os.RemoveAll(seal)  // nolint:errcheck
 }
 
 // SetAPIAddr writes the address of the running API to memory.

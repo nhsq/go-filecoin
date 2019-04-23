@@ -77,14 +77,23 @@ func (b *Builder) Build() Harness {
 
 	class := types.NewTestSectorClass()
 
+	staged, err := memRepo.StagingDir()
+	if err != nil {
+		panic(err)
+	}
+	sealed, err := memRepo.SealedDir()
+	if err != nil {
+		panic(err)
+	}
+
 	sb, err := sectorbuilder.NewRustSectorBuilder(sectorbuilder.RustSectorBuilderConfig{
 		BlockService:     blockService,
 		LastUsedSectorID: 0,
-		MetadataDir:      memRepo.StagingDir(),
+		MetadataDir:      staged,
 		MinerAddr:        minerAddr,
-		SealedSectorDir:  memRepo.SealedDir(),
+		SealedSectorDir:  sealed,
 		SectorClass:      class,
-		StagedSectorDir:  memRepo.StagingDir(),
+		StagedSectorDir:  staged,
 	})
 	require.NoError(b.t, err)
 

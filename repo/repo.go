@@ -45,11 +45,14 @@ type Repo interface {
 
 	Version() uint
 
+	Close() error
+}
+
+// SectorRepo is a representation of all sector data in a filecoin mining node.
+type SectorRepo interface {
 	// StagingDir is used to store staged sectors.
-	StagingDir() string
+	StagingDir() (string, error)
 
 	// SealedDir is used to store sealed sectors.
-	SealedDir() string
-
-	Close() error
+	SealedDir() (string, error)
 }

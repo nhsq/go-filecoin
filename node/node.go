@@ -144,7 +144,8 @@ type Node struct {
 
 	// Repo is the repo this node was created with
 	// it contains all persistent artifacts of the filecoin node
-	Repo repo.Repo
+	Repo       repo.Repo
+	SectorRepo repo.SectorRepo
 
 	// SectorBuilder is used by the miner to fill and seal sectors.
 	sectorBuilder sectorbuilder.SectorBuilder
@@ -182,6 +183,7 @@ type Config struct {
 	Verifier    proofs.Verifier
 	Rewarder    consensus.BlockRewarder
 	Repo        repo.Repo
+	SectorRepo  repo.SectorRepo
 	IsRelay     bool
 }
 
@@ -329,6 +331,9 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	if nc.Repo == nil {
 		nc.Repo = repo.NewInMemoryRepo()
 	}
+	if nc.SectorRepo == nil {
+		nc.SectorRepo = repo.NewInMemoryRepo()
+	}
 
 	bs := bstore.NewBlockstore(nc.Repo.Datastore())
 
@@ -451,6 +456,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		OfflineMode:  nc.OfflineMode,
 		PeerHost:     peerHost,
 		Repo:         nc.Repo,
+		SectorRepo:   nc.SectorRepo,
 		Wallet:       fcWallet,
 		blockTime:    nc.BlockTime,
 		Router:       router,
@@ -933,16 +939,26 @@ func initSectorBuilderForNode(ctx context.Context, node *Node, proofsMode types.
 		sectorClass = types.NewLiveSectorClass()
 	}
 
-	// TODO: Where should we store the RustSectorBuilder metadata? Currently, we
-	// configure the RustSectorBuilder to store its metadata in the staging
-	// directory.
+	// TODO: Currently, weconfigure the RustSectorBuilder to store its
+	// metadata in the staging directory, it should be in its own directory.
+	//
+	// Tracked here: https://github.com/filecoin-project/rust-fil-proofs/issues/402
+	stagingDir, err := node.SectorRepo.StagingDir()
+	if err != nil {
+		return nil, errors.Wrap(err, "could not open staging dir")
+	}
+	sealedDir, err := node.SectorRepo.SealedDir()
+	if err != nil {
+		return nil, errors.Wrap(err, "could not open sealed dir")
+	}
+
 	cfg := sectorbuilder.RustSectorBuilderConfig{
 		BlockService:     node.blockservice,
 		LastUsedSectorID: lastUsedSectorID,
-		MetadataDir:      node.Repo.StagingDir(),
+		MetadataDir:      stagingDir,
 		MinerAddr:        minerAddr,
-		SealedSectorDir:  node.Repo.SealedDir(),
-		StagedSectorDir:  node.Repo.StagingDir(),
+		SealedSectorDir:  sealedDir,
+		StagedSectorDir:  stagingDir,
 		SectorClass:      sectorClass,
 	}
 

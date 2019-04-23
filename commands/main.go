@@ -6,14 +6,12 @@ import (
 	"net"
 	"net/url"
 	"os"
-	"path/filepath"
 	"syscall"
 
 	"github.com/ipfs/go-ipfs-cmdkit"
 	"github.com/ipfs/go-ipfs-cmds"
 	"github.com/ipfs/go-ipfs-cmds/cli"
 	cmdhttp "github.com/ipfs/go-ipfs-cmds/http"
-	"github.com/mitchellh/go-homedir"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/multiformats/go-multiaddr-net"
 	"github.com/pkg/errors"
@@ -257,6 +255,7 @@ func makeExecutor(req *cmds.Request, env interface{}) (cmds.Executor, error) {
 
 func getAPIAddress(req *cmds.Request) (string, error) {
 	var rawAddr string
+	var err error
 	// second highest precedence is env vars.
 	if envapi := os.Getenv("FIL_API"); envapi != "" {
 		rawAddr = envapi
@@ -270,18 +269,10 @@ func getAPIAddress(req *cmds.Request) (string, error) {
 	// we will read the api file if no other option is given.
 	if len(rawAddr) == 0 {
 		repoDir, _ := req.Options[OptionRepoDir].(string)
-		repoDir = repo.GetRepoDir(repoDir)
-		rawPath := filepath.Join(filepath.Clean(repoDir), repo.APIFile)
-		apiFilePath, err := homedir.Expand(rawPath)
-		if err != nil {
-			return "", errors.Wrap(err, fmt.Sprintf("can't resolve local repo path %s", rawPath))
-		}
-
-		rawAddr, err = repo.APIAddrFromFile(apiFilePath)
+		rawAddr, err = repo.APIAddrOfRoot(repoDir)
 		if err != nil {
 			return "", errors.Wrap(err, "can't find API endpoint address in environment, command-line, or local repo (is the daemon running?)")
 		}
-
 	}
 
 	maddr, err := ma.NewMultiaddr(rawAddr)

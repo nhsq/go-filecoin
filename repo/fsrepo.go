@@ -23,8 +23,8 @@ import (
 )
 
 const (
-	// APIFile is the filename containing the filecoin node's api address.
-	APIFile                = "api"
+	// apiFile is the filename containing the filecoin node's api address.
+	apiFile                = "api"
 	configFilename         = "config.json"
 	tempConfigFilename     = ".config.json.temp"
 	lockFile               = "repo.lock"
@@ -49,7 +49,9 @@ func (err NoRepoError) Error() string {
 
 // FSRepo is a repo implementation backed by a filesystem.
 type FSRepo struct {
-	path    string
+	rootPath string
+	repoPath string
+
 	version uint
 
 	// lk protects the config file
@@ -67,17 +69,17 @@ type FSRepo struct {
 
 var _ Repo = (*FSRepo)(nil)
 
-// GetRepoDir is a helper for either using a user provided repoDir or fetching
-// the repoDir from FSRepoDir
-func GetRepoDir(repoDir string) string {
+// GetRootDir is a helper for either using a user provided repo root directory
+// or fetching the root directory from FSRepoDir.
+func GetRootDir(repoDir string) string {
 	if repoDir == "" {
-		repoDir = FSRepoDir()
+		repoDir = FSRootDir()
 	}
 	return repoDir
 }
 
 // FSRepoDir is a helper for getting the path to the repodir
-func FSRepoDir() string {
+func FSRootDir() string {
 	envRepoDir := os.Getenv("FIL_PATH")
 	if envRepoDir != "" {
 		return envRepoDir
@@ -86,12 +88,12 @@ func FSRepoDir() string {
 }
 
 // CreateRepo provides a quick shorthand for initializing and opening a repo
-func CreateRepo(repoDir string, cfg *config.Config) (*FSRepo, error) {
-	repoDir = GetRepoDir(repoDir)
-	if err := InitFSRepo(repoDir, cfg); err != nil {
+func CreateRepo(rootDir string, cfg *config.Config) (*FSRepo, error) {
+	rootDir = GetRootDir(rootDir)
+	if err := InitFSRepo(rootDir, cfg); err != nil {
 		return nil, err
 	}
-	return OpenFSRepo(repoDir)
+	return OpenFSRepo(rootDir)
 }
 
 // OpenFSRepo opens an already initialized fsrepo at the given path
@@ -100,8 +102,9 @@ func OpenFSRepo(p string) (*FSRepo, error) {
 	if err != nil {
 		return nil, err
 	}
+	repoPath := filepath.Join(expath, "repo")
 
-	isInit, err := isInitialized(expath)
+	isInit, err := isInitialized(repoPath)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to check if repo was initialized")
 	}
@@ -110,9 +113,9 @@ func OpenFSRepo(p string) (*FSRepo, error) {
 		return nil, &NoRepoError{p}
 	}
 
-	r := &FSRepo{path: expath}
+	r := &FSRepo{repoPath: repoPath, rootPath: expath}
 
-	r.lockfile, err = lockfile.Lock(r.path, lockFile)
+	r.lockfile, err = lockfile.Lock(r.repoPath, lockFile)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to take repo lock")
 	}
@@ -174,7 +177,13 @@ func InitFSRepo(p string, cfg *config.Config) error {
 		return err
 	}
 
-	init, err := isInitialized(expath)
+	if err := checkWritable(expath); err != nil {
+		return errors.Wrap(err, "checking writability failed")
+	}
+
+	repoPath := filepath.Join(expath, "repo")
+
+	init, err := isInitialized(repoPath)
 	if err != nil {
 		return err
 	}
@@ -183,15 +192,15 @@ func InitFSRepo(p string, cfg *config.Config) error {
 		return fmt.Errorf("repo already initialized")
 	}
 
-	if err := checkWritable(expath); err != nil {
+	if err := checkWritable(repoPath); err != nil {
 		return errors.Wrap(err, "checking writability failed")
 	}
 
-	if err := initVersion(expath, Version); err != nil {
+	if err := initVersion(repoPath, Version); err != nil {
 		return errors.Wrap(err, "initializing repo version failed")
 	}
 
-	if err := initConfig(expath, cfg); err != nil {
+	if err := initConfig(repoPath, cfg); err != nil {
 		return errors.Wrap(err, "initializing config file failed")
 	}
 
@@ -215,7 +224,7 @@ func (r *FSRepo) ReplaceConfig(cfg *config.Config) error {
 	defer r.lk.Unlock()
 
 	r.cfg = cfg
-	tmp := filepath.Join(r.path, tempConfigFilename)
+	tmp := filepath.Join(r.repoPath, tempConfigFilename)
 	err := os.RemoveAll(tmp)
 	if err != nil {
 		return err
@@ -224,13 +233,13 @@ func (r *FSRepo) ReplaceConfig(cfg *config.Config) error {
 	if err != nil {
 		return err
 	}
-	return os.Rename(tmp, filepath.Join(r.path, configFilename))
+	return os.Rename(tmp, filepath.Join(r.repoPath, configFilename))
 }
 
 // SnapshotConfig stores a copy `cfg` in <repo_path>/snapshots/ appending the
 // time of snapshot to the filename.
 func (r *FSRepo) SnapshotConfig(cfg *config.Config) error {
-	snapshotFile := filepath.Join(r.path, snapshotStorePrefix, genSnapshotFileName())
+	snapshotFile := filepath.Join(r.repoPath, snapshotStorePrefix, genSnapshotFileName())
 	if fileExists(snapshotFile) {
 		// this should never happen
 		return fmt.Errorf("file already exists: %s", snapshotFile)
@@ -302,7 +311,7 @@ func (r *FSRepo) removeFile(path string) error {
 }
 
 func (r *FSRepo) removeAPIFile() error {
-	return r.removeFile(filepath.Join(r.path, APIFile))
+	return r.removeFile(filepath.Join(r.repoPath, apiFile))
 }
 
 func isInitialized(p string) (bool, error) {
@@ -320,7 +329,7 @@ func isInitialized(p string) (bool, error) {
 }
 
 func (r *FSRepo) loadConfig() error {
-	configFile := filepath.Join(r.path, configFilename)
+	configFile := filepath.Join(r.repoPath, configFilename)
 
 	cfg, err := config.ReadFile(configFile)
 	if err != nil {
@@ -333,7 +342,7 @@ func (r *FSRepo) loadConfig() error {
 
 func (r *FSRepo) loadVersion() (uint, error) {
 	// TODO: limited file reading, to avoid attack vector
-	file, err := ioutil.ReadFile(filepath.Join(r.path, versionFilename))
+	file, err := ioutil.ReadFile(filepath.Join(r.repoPath, versionFilename))
 	if err != nil {
 		return 0, err
 	}
@@ -349,7 +358,7 @@ func (r *FSRepo) loadVersion() (uint, error) {
 func (r *FSRepo) openDatastore() error {
 	switch r.cfg.Datastore.Type {
 	case "badgerds":
-		ds, err := badgerds.NewDatastore(filepath.Join(r.path, r.cfg.Datastore.Path), badgerOptions())
+		ds, err := badgerds.NewDatastore(filepath.Join(r.repoPath, r.cfg.Datastore.Path), badgerOptions())
 		if err != nil {
 			return err
 		}
@@ -362,7 +371,7 @@ func (r *FSRepo) openDatastore() error {
 }
 
 func (r *FSRepo) openKeystore() error {
-	ksp := filepath.Join(r.path, "keystore")
+	ksp := filepath.Join(r.repoPath, "keystore")
 
 	ks, err := keystore.NewFSKeystore(ksp)
 	if err != nil {
@@ -375,7 +384,7 @@ func (r *FSRepo) openKeystore() error {
 }
 
 func (r *FSRepo) openChainDatastore() error {
-	ds, err := badgerds.NewDatastore(filepath.Join(r.path, chainDatastorePrefix), badgerOptions())
+	ds, err := badgerds.NewDatastore(filepath.Join(r.repoPath, chainDatastorePrefix), badgerOptions())
 	if err != nil {
 		return err
 	}
@@ -387,7 +396,7 @@ func (r *FSRepo) openChainDatastore() error {
 
 func (r *FSRepo) openWalletDatastore() error {
 	// TODO: read wallet datastore info from config, use that to open it up
-	ds, err := badgerds.NewDatastore(filepath.Join(r.path, walletDatastorePrefix), badgerOptions())
+	ds, err := badgerds.NewDatastore(filepath.Join(r.repoPath, walletDatastorePrefix), badgerOptions())
 	if err != nil {
 		return err
 	}
@@ -398,7 +407,7 @@ func (r *FSRepo) openWalletDatastore() error {
 }
 
 func (r *FSRepo) openDealsDatastore() error {
-	ds, err := badgerds.NewDatastore(filepath.Join(r.path, dealsDatastorePrefix), badgerOptions())
+	ds, err := badgerds.NewDatastore(filepath.Join(r.repoPath, dealsDatastorePrefix), badgerOptions())
 	if err != nil {
 		return err
 	}
@@ -458,19 +467,35 @@ func fileExists(file string) bool {
 }
 
 // StagingDir satisfies node.SectorDirs
-func (r *FSRepo) StagingDir() string {
-	return path.Join(r.path, "staging")
+func (r *FSRepo) StagingDir() (string, error) {
+	// Default is to keep sector data alongside node repo data.
+	if r.cfg.SectorBase.RootDir == "" {
+		return path.Join(r.rootPath, "sectors/staging"), nil
+	}
+	// If not using default check for writeability
+	if err := checkWritable(r.cfg.SectorBase.RootDir); err != nil {
+		return "", nil
+	}
+	return path.Join(r.cfg.SectorBase.RootDir, "staging"), nil
 }
 
 // SealedDir satisfies node.SectorDirs
-func (r *FSRepo) SealedDir() string {
-	return path.Join(r.path, "sealed")
+func (r *FSRepo) SealedDir() (string, error) {
+	// Default is to keep sector data alongside node repo data.
+	if r.cfg.SectorBase.RootDir == "" {
+		return path.Join(r.rootPath, "sectors/sealed"), nil
+	}
+	// If not using default check for writeability
+	if err := checkWritable(r.cfg.SectorBase.RootDir); err != nil {
+		return "", nil
+	}
+	return path.Join(r.cfg.SectorBase.RootDir, "sealed"), nil
 }
 
 // SetAPIAddr writes the address to the API file. SetAPIAddr expects parameter
 // `port` to be of the form `:<port>`.
 func (r *FSRepo) SetAPIAddr(maddr string) error {
-	f, err := os.Create(filepath.Join(r.path, APIFile))
+	f, err := os.Create(filepath.Join(r.repoPath, apiFile))
 	if err != nil {
 		return errors.Wrap(err, "could not create API file")
 	}
@@ -493,12 +518,16 @@ func (r *FSRepo) SetAPIAddr(maddr string) error {
 	return nil
 }
 
+func APIAddrOfRoot(rootDir string) (string, error) {
+	return apiAddrFromFile(filepath.Join(GetRootDir(rootDir), apiFile))
+}
+
 // APIAddrFromFile reads the address from the API file at the given path.
 // A relevant comment from a similar function at go-ipfs/repo/fsrepo/fsrepo.go:
 // This is a concurrent operation, meaning that any process may read this file.
 // Modifying this file, therefore, should use "mv" to replace the whole file
 // and avoid interleaved read/writes
-func APIAddrFromFile(apiFilePath string) (string, error) {
+func apiAddrFromFile(apiFilePath string) (string, error) {
 	contents, err := ioutil.ReadFile(apiFilePath)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to read API file")
@@ -509,7 +538,7 @@ func APIAddrFromFile(apiFilePath string) (string, error) {
 
 // APIAddr reads the FSRepo's api file and returns the api address
 func (r *FSRepo) APIAddr() (string, error) {
-	return APIAddrFromFile(filepath.Join(filepath.Clean(r.path), APIFile))
+	return apiAddrFromFile(filepath.Join(filepath.Clean(r.repoPath), apiFile))
 }
 
 func badgerOptions() *badgerds.Options {
