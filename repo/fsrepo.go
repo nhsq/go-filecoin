@@ -519,7 +519,8 @@ func (r *FSRepo) SetAPIAddr(maddr string) error {
 }
 
 func APIAddrOfRoot(rootDir string) (string, error) {
-	return apiAddrFromFile(filepath.Join(GetRootDir(rootDir), apiFile))
+	repoPath := filepath.Join(GetRootDir(rootDir), "repo")
+	return apiAddrFromFile(filepath.Join(repoPath, apiFile))
 }
 
 // APIAddrFromFile reads the address from the API file at the given path.
