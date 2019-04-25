@@ -519,7 +519,10 @@ func (r *FSRepo) SetAPIAddr(maddr string) error {
 }
 
 func APIAddrFromHome(homePath string) (string, error) {
-	repoPath := filepath.Join(GetHomeDir(homePath), "repo")
+	repoPath, err := homedir.Expand(filepath.Join(GetHomeDir(homePath), "repo"))
+	if err != nil {
+		return "", errors.Wrap(err, fmt.Sprintf("can't resolve local repo path %s", repoPath))
+	}
 	return apiAddrFromFile(filepath.Join(repoPath, apiFile))
 }
 
