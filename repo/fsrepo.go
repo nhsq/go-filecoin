@@ -49,7 +49,7 @@ func (err NoRepoError) Error() string {
 
 // FSRepo is a repo implementation backed by a filesystem.
 type FSRepo struct {
-	rootPath string
+	homePath string
 	repoPath string
 
 	version uint
@@ -71,25 +71,25 @@ var _ Repo = (*FSRepo)(nil)
 
 // GetRootDir is a helper for either using a user provided repo root directory
 // or fetching the root directory from FSRepoDir.
-func GetRootDir(repoDir string) string {
-	if repoDir == "" {
-		repoDir = FSRootDir()
+func GetHomeDir(homeDir string) string {
+	if homeDir == "" {
+		homeDir = FSHomeDir()
 	}
-	return repoDir
+	return homeDir
 }
 
 // FSRepoDir is a helper for getting the path to the repodir
-func FSRootDir() string {
-	envRepoDir := os.Getenv("FIL_PATH")
-	if envRepoDir != "" {
-		return envRepoDir
+func FSHomeDir() string {
+	envHomeDir := os.Getenv("FIL_PATH")
+	if envHomeDir != "" {
+		return envHomeDir
 	}
 	return "~/.filecoin"
 }
 
 // CreateRepo provides a quick shorthand for initializing and opening a repo
 func CreateRepo(rootDir string, cfg *config.Config) (*FSRepo, error) {
-	rootDir = GetRootDir(rootDir)
+	rootDir = GetHomeDir(rootDir)
 	if err := InitFSRepo(rootDir, cfg); err != nil {
 		return nil, err
 	}
@@ -98,11 +98,11 @@ func CreateRepo(rootDir string, cfg *config.Config) (*FSRepo, error) {
 
 // OpenFSRepo opens an already initialized fsrepo at the given path
 func OpenFSRepo(p string) (*FSRepo, error) {
-	expath, err := homedir.Expand(p)
+	homePath, err := homedir.Expand(p)
 	if err != nil {
 		return nil, err
 	}
-	repoPath := filepath.Join(expath, "repo")
+	repoPath := filepath.Join(homePath, "repo")
 
 	isInit, err := isInitialized(repoPath)
 	if err != nil {
@@ -113,7 +113,7 @@ func OpenFSRepo(p string) (*FSRepo, error) {
 		return nil, &NoRepoError{p}
 	}
 
-	r := &FSRepo{repoPath: repoPath, rootPath: expath}
+	r := &FSRepo{repoPath: repoPath, homePath: homePath}
 
 	r.lockfile, err = lockfile.Lock(r.repoPath, lockFile)
 	if err != nil {
@@ -172,16 +172,16 @@ func (r *FSRepo) loadFromDisk() error {
 
 // InitFSRepo initializes an fsrepo at the given path using the given configuration
 func InitFSRepo(p string, cfg *config.Config) error {
-	expath, err := homedir.Expand(p)
+	homePath, err := homedir.Expand(p)
 	if err != nil {
 		return err
 	}
 
-	if err := checkWritable(expath); err != nil {
-		return errors.Wrap(err, "checking writability failed")
+	if err := checkWritable(homePath); err != nil {
+		return errors.Wrap(err, "checking writability of home path failed")
 	}
 
-	repoPath := filepath.Join(expath, "repo")
+	repoPath := filepath.Join(homePath, "repo")
 
 	init, err := isInitialized(repoPath)
 	if err != nil {
@@ -193,7 +193,7 @@ func InitFSRepo(p string, cfg *config.Config) error {
 	}
 
 	if err := checkWritable(repoPath); err != nil {
-		return errors.Wrap(err, "checking writability failed")
+		return errors.Wrap(err, "checking writability of repo path failed")
 	}
 
 	if err := initVersion(repoPath, Version); err != nil {
@@ -470,7 +470,7 @@ func fileExists(file string) bool {
 func (r *FSRepo) StagingDir() (string, error) {
 	// Default is to keep sector data alongside node repo data.
 	if r.cfg.SectorBase.RootDir == "" {
-		return path.Join(r.rootPath, "sectors/staging"), nil
+		return path.Join(r.homePath, "sectors/staging"), nil
 	}
 	// If not using default check for writeability
 	if err := checkWritable(r.cfg.SectorBase.RootDir); err != nil {
@@ -483,7 +483,7 @@ func (r *FSRepo) StagingDir() (string, error) {
 func (r *FSRepo) SealedDir() (string, error) {
 	// Default is to keep sector data alongside node repo data.
 	if r.cfg.SectorBase.RootDir == "" {
-		return path.Join(r.rootPath, "sectors/sealed"), nil
+		return path.Join(r.homePath, "sectors/sealed"), nil
 	}
 	// If not using default check for writeability
 	if err := checkWritable(r.cfg.SectorBase.RootDir); err != nil {
@@ -518,8 +518,8 @@ func (r *FSRepo) SetAPIAddr(maddr string) error {
 	return nil
 }
 
-func APIAddrOfRoot(rootDir string) (string, error) {
-	repoPath := filepath.Join(GetRootDir(rootDir), "repo")
+func APIAddrFromHome(homePath string) (string, error) {
+	repoPath := filepath.Join(GetHomeDir(homePath), "repo")
 	return apiAddrFromFile(filepath.Join(repoPath, apiFile))
 }
 

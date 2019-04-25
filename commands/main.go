@@ -25,7 +25,7 @@ const (
 	OptionAPI = "cmdapiaddr"
 
 	// OptionRepoDir is the name of the option for specifying the directory of the repo.
-	OptionRepoDir = "repodir"
+	OptionHomeDir = "repodir"
 
 	// APIPrefix is the prefix for the http version of the api.
 	APIPrefix = "/api"
@@ -129,7 +129,7 @@ TOOL COMMANDS
 	},
 	Options: []cmdkit.Option{
 		cmdkit.StringOption(OptionAPI, "set the api port to use"),
-		cmdkit.StringOption(OptionRepoDir, "set the directory of the repo, defaults to ~/.filecoin"),
+		cmdkit.StringOption(OptionHomeDir, "set the home directory, defaults to ~/.filecoin"),
 		cmds.OptionEncodingType,
 		cmdkit.BoolOption("help", "Show the full command help text."),
 		cmdkit.BoolOption("h", "Show a short version of the command help text."),
@@ -268,8 +268,8 @@ func getAPIAddress(req *cmds.Request) (string, error) {
 
 	// we will read the api file if no other option is given.
 	if len(rawAddr) == 0 {
-		repoDir, _ := req.Options[OptionRepoDir].(string)
-		rawAddr, err = repo.APIAddrOfRoot(repoDir)
+		homeDir, _ := req.Options[OptionHomeDir].(string)
+		rawAddr, err = repo.APIAddrFromHome(homeDir)
 		if err != nil {
 			return "", errors.Wrap(err, "can't find API endpoint address in environment, command-line, or local repo (is the daemon running?)")
 		}

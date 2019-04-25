@@ -1,7 +1,6 @@
 package repo
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -249,7 +248,6 @@ func TestRepoLock(t *testing.T) {
 
 	assert.FileExists(t, filepath.Join(r.repoPath, lockFile))
 
-	fmt.Printf("r.repoPath: %s, r.rootPath: %s\n", r.repoPath, r.rootPath)
 	_, err = OpenFSRepo(dir)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to take repo lock")

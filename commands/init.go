@@ -45,11 +45,11 @@ var initCmd = &cmds.Command{
 			return err
 		}
 
-		repoDir, _ := req.Options[OptionRepoDir].(string)
-		if err := re.Emit(fmt.Sprintf("initializing filecoin node at %s\n", repoDir)); err != nil {
+		homeDir, _ := req.Options[OptionHomeDir].(string)
+		if err := re.Emit(fmt.Sprintf("initializing filecoin node at %s\n", homeDir)); err != nil {
 			return err
 		}
-		rep, err := repo.CreateRepo(repoDir, newConfig)
+		rep, err := repo.CreateRepo(homeDir, newConfig)
 		if err != nil {
 			return err
 		}

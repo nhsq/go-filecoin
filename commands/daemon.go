@@ -118,9 +118,9 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment)
 }
 
 func getRepo(req *cmds.Request) (repo.Repo, repo.SectorRepo, error) {
-	repoDir, _ := req.Options[OptionRepoDir].(string)
-	repoDir = repo.GetRootDir(repoDir)
-	r, err := repo.OpenFSRepo(repoDir)
+	homeDir, _ := req.Options[OptionHomeDir].(string)
+	homeDir = repo.GetHomeDir(homeDir)
+	r, err := repo.OpenFSRepo(homeDir)
 	return r, r, err
 }
 
