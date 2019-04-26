@@ -79,11 +79,7 @@ func TestFSRepoInit(t *testing.T) {
 	tf.UnitTest(t)
 
 	dir, err := ioutil.TempDir("", "")
-
-
-	repoPath := filepath.Join(dir, "repo")
 	assert.NoError(t, err)
-
 
 	defer os.RemoveAll(dir)
 
@@ -97,8 +93,6 @@ func TestFSRepoInit(t *testing.T) {
 	t.Log("snapshot dir was created during FSRepo Init")
 	assert.True(t, fileExists(filepath.Join(dir, snapshotStorePrefix)))
 
-
-
 	// TODO: asserting the exact content here is gonna get old real quick
 	t.Log("config file matches expected value")
 	assert.Equal(t,
@@ -110,8 +104,6 @@ func TestFSRepoInit(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, "1", string(version))
-
-
 }
 
 func getSnapshotFilenames(t *testing.T, dir string) []string {
@@ -132,59 +124,36 @@ func TestFSRepoOpen(t *testing.T) {
 
 	t.Run("[fail] repo version newer than binary", func(t *testing.T) {
 		dir, err := ioutil.TempDir("", "")
-
 		assert.NoError(t, err)
-
-
 		defer os.RemoveAll(dir)
 
 		assert.NoError(t, InitFSRepo(dir, config.NewDefaultConfig()))
-
 		// set wrong version
-
-
 		assert.NoError(t, ioutil.WriteFile(filepath.Join(dir, versionFilename), []byte("2"), 0644))
-
-
 
 		_, err = OpenFSRepo(dir)
 		assert.EqualError(t, err, "binary needs update to handle repo version, got 2 expected 1. Update binary to latest release")
 	})
 	t.Run("[fail] binary version newer than repo", func(t *testing.T) {
 		dir, err := ioutil.TempDir("", "")
-
 		assert.NoError(t, err)
-
-
 		defer os.RemoveAll(dir)
 
 		assert.NoError(t, InitFSRepo(dir, config.NewDefaultConfig()))
-
 		// set wrong version
-
-
 		assert.NoError(t, ioutil.WriteFile(filepath.Join(dir, versionFilename), []byte("0"), 0644))
-
 
 		_, err = OpenFSRepo(dir)
 		assert.EqualError(t, err, "out of date repo version, got 0 expected 1. Migrate with tools/migration/go-filecoin-migrate")
 	})
 	t.Run("[fail] version corrupt", func(t *testing.T) {
 		dir, err := ioutil.TempDir("", "")
-
-
 		assert.NoError(t, err)
 
-
 		defer os.RemoveAll(dir)
-
 		assert.NoError(t, InitFSRepo(dir, config.NewDefaultConfig()))
-
 		// set wrong version
-
 		assert.NoError(t, ioutil.WriteFile(filepath.Join(dir, versionFilename), []byte("v.8"), 0644))
-
-
 
 		_, err = OpenFSRepo(dir)
 		assert.EqualError(t, err, "failed to load version: corrupt version file: version is not an integer")
@@ -232,10 +201,7 @@ func TestFSRepoReplaceAndSnapshotConfig(t *testing.T) {
 	assert.NoError(t, err, InitFSRepo(dir, cfg))
 
 	expSnpsht, err := ioutil.ReadFile(filepath.Join(dir, configFilename))
-
 	require.NoError(t, err)
-
-
 
 	r1, err := OpenFSRepo(dir)
 	assert.NoError(t, err)
@@ -254,16 +220,12 @@ func TestFSRepoReplaceAndSnapshotConfig(t *testing.T) {
 
 	// assert that a single snapshot was created when replacing the config
 	// get the snapshot file name
-
-
 	snpFiles := getSnapshotFilenames(t, filepath.Join(dir, snapshotStorePrefix))
 	require.Equal(t, 1, len(snpFiles))
 
 	snpsht, err := ioutil.ReadFile(filepath.Join(dir, snapshotStorePrefix, snpFiles[0]))
 	require.NoError(t, err)
 	assert.Equal(t, string(expSnpsht), string(snpsht))
-
-
 }
 
 func TestRepoLock(t *testing.T) {
@@ -278,43 +240,28 @@ func TestRepoLock(t *testing.T) {
 
 	r, err := OpenFSRepo(dir)
 	assert.NoError(t, err)
-
-
 	assert.FileExists(t, filepath.Join(dir, lockFile))
-
-
-
 	_, err = OpenFSRepo(dir)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to take repo lock")
-
 	assert.NoError(t, r.Close())
-
 
 	_, err = os.Lstat(filepath.Join(dir, lockFile))
 	assert.True(t, os.IsNotExist(err))
-
-
 }
 
 func TestRepoLockFail(t *testing.T) {
 	tf.UnitTest(t)
 
 	dir, err := ioutil.TempDir("", "")
-
 	assert.NoError(t, err)
-
-
 	defer os.RemoveAll(dir)
 
 	cfg := config.NewDefaultConfig()
 	assert.NoError(t, err, InitFSRepo(dir, cfg))
 
 	// set invalid version, to make opening the repo fail
-
 	assert.NoError(t,
-
-
 		ioutil.WriteFile(filepath.Join(dir, versionFilename), []byte("hello"), 0644),
 	)
 
@@ -371,13 +318,13 @@ func TestRepoAPIFile(t *testing.T) {
 		withFSRepo(t, func(r *FSRepo) {
 			mustSetAPIAddr(t, r, "/ip4/127.0.0.1/tcp/1234")
 
-			info, err := os.Stat(filepath.Join(r.repoPath, APIFile))
+			info, err := os.Stat(filepath.Join(r.repoPath, apiFile))
 			assert.NoError(t, err)
-			assert.Equal(t, APIFile, info.Name())
+			assert.Equal(t, apiFile, info.Name())
 
 			r.Close()
 
-			_, err = os.Stat(filepath.Join(r.repoPath, APIFile))
+			_, err = os.Stat(filepath.Join(r.repoPath, apiFile))
 			assert.Error(t, err)
 		})
 	})
@@ -386,7 +333,7 @@ func TestRepoAPIFile(t *testing.T) {
 		withFSRepo(t, func(r *FSRepo) {
 			mustSetAPIAddr(t, r, "/ip4/127.0.0.1/tcp/1234")
 
-			err := os.Remove(filepath.Join(r.repoPath, APIFile))
+			err := os.Remove(filepath.Join(r.repoPath, apiFile))
 			assert.NoError(t, err)
 
 			assert.NoError(t, r.Close())
@@ -396,7 +343,7 @@ func TestRepoAPIFile(t *testing.T) {
 	t.Run("SetAPI fails if unable to create API file", func(t *testing.T) {
 		withFSRepo(t, func(r *FSRepo) {
 			// create a file with permission bits that prevent us from truncating
-			err := ioutil.WriteFile(filepath.Join(r.repoPath, APIFile), []byte("/ip4/127.0.0.1/tcp/9999"), 0000)
+			err := ioutil.WriteFile(filepath.Join(r.repoPath, apiFile), []byte("/ip4/127.0.0.1/tcp/9999"), 0000)
 			assert.NoError(t, err)
 
 			// try to os.Create to same path - will see a failure
@@ -419,7 +366,6 @@ func TestCreateRepo(t *testing.T) {
 
 		_, err = CreateRepo(dir, cfg)
 		assert.NoError(t, err)
-
 		assert.True(t, ConfigExists(dir))
 	})
 
@@ -459,22 +405,14 @@ func TestCreateRepo(t *testing.T) {
 
 		err = ioutil.WriteFile(filepath.Join(dir, "config.json"), []byte("hello"), 0644)
 		assert.NoError(t, err)
-
-		assert.NoError(err)
 		defer os.RemoveAll(dir)
 
 		err = ioutil.WriteFile(filepath.Join(dir, "config.json"), []byte("hello"), 0644)
-		require.NoError(err)
-
+		require.NoError(t, err)
 
 		_, err = CreateRepo(dir, cfg)
 		assert.Contains(t, err.Error(), "repo already initialized")
-
-
 		assert.True(t, ConfigExists(dir))
-
-		assert.True(ConfigExists(dir))
-
 	})
 }
 
