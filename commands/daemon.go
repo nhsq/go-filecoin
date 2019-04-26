@@ -21,6 +21,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/node"
+	"github.com/filecoin-project/go-filecoin/paths"
 	"github.com/filecoin-project/go-filecoin/repo"
 )
 
@@ -49,7 +50,7 @@ var daemonCmd = &cmds.Command{
 
 func daemonRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 	// third precedence is config file.
-	rep, srep, err := getRepo(req)
+	rep, err := getRepo(req)
 	if err != nil {
 		return err
 	}
@@ -72,7 +73,7 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment)
 		rep.Config().Swarm.PublicRelayAddress = publicRelayAddress
 	}
 
-	opts, err := node.OptionsFromRepo(rep, srep)
+	opts, err := node.OptionsFromRepo(rep)
 	if err != nil {
 		return err
 	}
@@ -117,11 +118,11 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment)
 	return runAPIAndWait(req.Context, fcn, rep.Config(), req)
 }
 
-func getRepo(req *cmds.Request) (repo.Repo, repo.SectorRepo, error) {
-	homeDir, _ := req.Options[OptionHomeDir].(string)
-	homeDir = repo.GetHomeDir(homeDir)
-	r, err := repo.OpenFSRepo(homeDir)
-	return r, r, err
+func getRepo(req *cmds.Request) (repo.Repo, error) {
+	repoDir, _ := req.Options[OptionRepoDir].(string)
+	repoDir = paths.GetRepoPath(repoDir)
+	r, err := repo.OpenFSRepo(repoDir)
+	return r, err
 }
 
 func runAPIAndWait(ctx context.Context, nd *node.Node, config *config.Config, req *cmds.Request) error {

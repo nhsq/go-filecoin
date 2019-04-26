@@ -16,6 +16,7 @@ import (
 	"github.com/multiformats/go-multiaddr-net"
 	"github.com/pkg/errors"
 
+	"github.com/filecoin-project/go-filecoin/paths"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -25,7 +26,7 @@ const (
 	OptionAPI = "cmdapiaddr"
 
 	// OptionRepoDir is the name of the option for specifying the directory of the repo.
-	OptionHomeDir = "repodir"
+	OptionRepoDir = "repodir"
 
 	// APIPrefix is the prefix for the http version of the api.
 	APIPrefix = "/api"
@@ -129,7 +130,7 @@ TOOL COMMANDS
 	},
 	Options: []cmdkit.Option{
 		cmdkit.StringOption(OptionAPI, "set the api port to use"),
-		cmdkit.StringOption(OptionHomeDir, "set the home directory, defaults to ~/.filecoin"),
+		cmdkit.StringOption(OptionRepoDir, "set the repo directory, defaults to ~/.filecoin/repo"),
 		cmds.OptionEncodingType,
 		cmdkit.BoolOption("help", "Show the full command help text."),
 		cmdkit.BoolOption("h", "Show a short version of the command help text."),
@@ -268,8 +269,9 @@ func getAPIAddress(req *cmds.Request) (string, error) {
 
 	// we will read the api file if no other option is given.
 	if len(rawAddr) == 0 {
-		homeDir, _ := req.Options[OptionHomeDir].(string)
-		rawAddr, err = repo.APIAddrFromHome(homeDir)
+		repoDir, _ := req.Options[OptionRepoDir].(string)
+		repoDir = paths.GetRepoPath(repoDir)
+		rawAddr, err = repo.APIAddrFromRepoPath(repoDir)
 		if err != nil {
 			return "", errors.Wrap(err, "can't find API endpoint address in environment, command-line, or local repo (is the daemon running?)")
 		}

@@ -75,7 +75,6 @@ func TestConnectsToBootstrapNodes(t *testing.T) {
 
 		require.NoError(t, node.Init(ctx, r, consensus.DefaultGenesis))
 		r.Config().Bootstrap.Addresses = []string{}
-
 		opts, err := node.OptionsFromRepo(r)
 		require.NoError(t, err)
 

@@ -49,6 +49,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/net"
 	"github.com/filecoin-project/go-filecoin/net/pubsub"
+	"github.com/filecoin-project/go-filecoin/paths"
 	"github.com/filecoin-project/go-filecoin/plumbing"
 	"github.com/filecoin-project/go-filecoin/plumbing/bcf"
 	"github.com/filecoin-project/go-filecoin/plumbing/cfg"
@@ -144,8 +145,7 @@ type Node struct {
 
 	// Repo is the repo this node was created with
 	// it contains all persistent artifacts of the filecoin node
-	Repo       repo.Repo
-	SectorRepo repo.SectorRepo
+	Repo repo.Repo
 
 	// SectorBuilder is used by the miner to fill and seal sectors.
 	sectorBuilder sectorbuilder.SectorBuilder
@@ -183,7 +183,6 @@ type Config struct {
 	Verifier    proofs.Verifier
 	Rewarder    consensus.BlockRewarder
 	Repo        repo.Repo
-	SectorRepo  repo.SectorRepo
 	IsRelay     bool
 }
 
@@ -331,9 +330,6 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	if nc.Repo == nil {
 		nc.Repo = repo.NewInMemoryRepo()
 	}
-	if nc.SectorRepo == nil {
-		nc.SectorRepo = repo.NewInMemoryRepo()
-	}
 
 	bs := bstore.NewBlockstore(nc.Repo.Datastore())
 
@@ -456,7 +452,6 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		OfflineMode:  nc.OfflineMode,
 		PeerHost:     peerHost,
 		Repo:         nc.Repo,
-		SectorRepo:   nc.SectorRepo,
 		Wallet:       fcWallet,
 		blockTime:    nc.BlockTime,
 		Router:       router,
@@ -943,22 +938,14 @@ func initSectorBuilderForNode(ctx context.Context, node *Node, proofsMode types.
 	// metadata in the staging directory, it should be in its own directory.
 	//
 	// Tracked here: https://github.com/filecoin-project/rust-fil-proofs/issues/402
-	stagingDir, err := node.SectorRepo.StagingDir()
-	if err != nil {
-		return nil, errors.Wrap(err, "could not open staging dir")
-	}
-	sealedDir, err := node.SectorRepo.SealedDir()
-	if err != nil {
-		return nil, errors.Wrap(err, "could not open sealed dir")
-	}
-
+	sectorDir := paths.GetSectorPath(node.Repo.Config().SectorBase.RootDir)
 	cfg := sectorbuilder.RustSectorBuilderConfig{
 		BlockService:     node.blockservice,
 		LastUsedSectorID: lastUsedSectorID,
-		MetadataDir:      stagingDir,
+		MetadataDir:      paths.StagingDir(sectorDir),
 		MinerAddr:        minerAddr,
-		SealedSectorDir:  sealedDir,
-		StagedSectorDir:  stagingDir,
+		SealedSectorDir:  paths.SealedDir(sectorDir),
+		StagedSectorDir:  paths.StagingDir(sectorDir),
 		SectorClass:      sectorClass,
 	}
 

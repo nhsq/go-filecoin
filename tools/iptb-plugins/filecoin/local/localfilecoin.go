@@ -418,7 +418,7 @@ func (l *Localfilecoin) Errorf(format string, args ...interface{}) {
 	log.Errorf("Node: %s %s", l, fmt.Sprintf(format, args...))
 }
 
-// Dir returns the root directory the node is using.
+// Dir returns the repo directory the node is using.
 func (l *Localfilecoin) Dir() string {
 	return l.dir
 }
@@ -461,8 +461,7 @@ func (l *Localfilecoin) APIAddr() (string, error) {
 	*/
 
 	var err error
-	repoPath := filepath.Join(l.dir, "repo")
-	l.apiaddr, err = filecoin.GetAPIAddrFromRepo(repoPath)
+	l.apiaddr, err = filecoin.GetAPIAddrFromRepo(l.dir)
 	if err != nil {
 		return "", err
 	}
@@ -490,13 +489,11 @@ func (l *Localfilecoin) SwarmAddrs() ([]string, error) {
 
 // GetConfig returns the nodes config.
 func (l *Localfilecoin) Config() (interface{}, error) {
-	repoPath := filepath.Join(l.dir, "repo")
-	return config.ReadFile(filepath.Join(repoPath, "config.json"))
+	return config.ReadFile(filepath.Join(l.dir, "config.json"))
 }
 
 // WriteConfig writes a nodes config file.
 func (l *Localfilecoin) WriteConfig(cfg interface{}) error {
 	lcfg := cfg.(*config.Config)
-	repoPath := filepath.Join(l.dir, "repo")
-	return lcfg.WriteFile(filepath.Join(repoPath, "config.json"))
+	return lcfg.WriteFile(filepath.Join(l.dir, "config.json"))
 }

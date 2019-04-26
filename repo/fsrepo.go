@@ -5,7 +5,6 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -34,6 +33,7 @@ const (
 	dealsDatastorePrefix   = "deals"
 	snapshotStorePrefix    = "snapshots"
 	snapshotFilenamePrefix = "snapshot"
+	DefaultRepoDir         = "repo"
 )
 
 // NoRepoError is returned when trying to open a repo where one does not exist
@@ -49,7 +49,6 @@ func (err NoRepoError) Error() string {
 
 // FSRepo is a repo implementation backed by a filesystem.
 type FSRepo struct {
-	homePath string
 	repoPath string
 
 	version uint
@@ -69,40 +68,20 @@ type FSRepo struct {
 
 var _ Repo = (*FSRepo)(nil)
 
-// GetRootDir is a helper for either using a user provided repo root directory
-// or fetching the root directory from FSRepoDir.
-func GetHomeDir(homeDir string) string {
-	if homeDir == "" {
-		homeDir = FSHomeDir()
-	}
-	return homeDir
-}
-
-// FSRepoDir is a helper for getting the path to the repodir
-func FSHomeDir() string {
-	envHomeDir := os.Getenv("FIL_PATH")
-	if envHomeDir != "" {
-		return envHomeDir
-	}
-	return "~/.filecoin"
-}
-
 // CreateRepo provides a quick shorthand for initializing and opening a repo
-func CreateRepo(rootDir string, cfg *config.Config) (*FSRepo, error) {
-	rootDir = GetHomeDir(rootDir)
-	if err := InitFSRepo(rootDir, cfg); err != nil {
+func CreateRepo(repoPath string, cfg *config.Config) (*FSRepo, error) {
+	if err := InitFSRepo(repoPath, cfg); err != nil {
 		return nil, err
 	}
-	return OpenFSRepo(rootDir)
+	return OpenFSRepo(repoPath)
 }
 
 // OpenFSRepo opens an already initialized fsrepo at the given path
-func OpenFSRepo(p string) (*FSRepo, error) {
-	homePath, err := homedir.Expand(p)
+func OpenFSRepo(repoPath string) (*FSRepo, error) {
+	repoPath, err := homedir.Expand(repoPath)
 	if err != nil {
 		return nil, err
 	}
-	repoPath := filepath.Join(homePath, "repo")
 
 	isInit, err := isInitialized(repoPath)
 	if err != nil {
@@ -110,10 +89,10 @@ func OpenFSRepo(p string) (*FSRepo, error) {
 	}
 
 	if !isInit {
-		return nil, &NoRepoError{p}
+		return nil, &NoRepoError{repoPath}
 	}
 
-	r := &FSRepo{repoPath: repoPath, homePath: homePath}
+	r := &FSRepo{repoPath: repoPath}
 
 	r.lockfile, err = lockfile.Lock(r.repoPath, lockFile)
 	if err != nil {
@@ -171,17 +150,15 @@ func (r *FSRepo) loadFromDisk() error {
 }
 
 // InitFSRepo initializes an fsrepo at the given path using the given configuration
-func InitFSRepo(p string, cfg *config.Config) error {
-	homePath, err := homedir.Expand(p)
+func InitFSRepo(repoPath string, cfg *config.Config) error {
+	repoPath, err := homedir.Expand(repoPath)
 	if err != nil {
 		return err
 	}
 
-	if err := checkWritable(homePath); err != nil {
-		return errors.Wrap(err, "checking writability of home path failed")
+	if err := checkWritable(repoPath); err != nil {
+		return errors.Wrap(err, "checking writability of repo path failed")
 	}
-
-	repoPath := filepath.Join(homePath, "repo")
 
 	init, err := isInitialized(repoPath)
 	if err != nil {
@@ -190,10 +167,6 @@ func InitFSRepo(p string, cfg *config.Config) error {
 
 	if init {
 		return fmt.Errorf("repo already initialized")
-	}
-
-	if err := checkWritable(repoPath); err != nil {
-		return errors.Wrap(err, "checking writability of repo path failed")
 	}
 
 	if err := initVersion(repoPath, Version); err != nil {
@@ -466,32 +439,6 @@ func fileExists(file string) bool {
 	return err == nil
 }
 
-// StagingDir satisfies node.SectorDirs
-func (r *FSRepo) StagingDir() (string, error) {
-	// Default is to keep sector data alongside node repo data.
-	if r.cfg.SectorBase.RootDir == "" {
-		return path.Join(r.homePath, "sectors/staging"), nil
-	}
-	// If not using default check for writeability
-	if err := checkWritable(r.cfg.SectorBase.RootDir); err != nil {
-		return "", nil
-	}
-	return path.Join(r.cfg.SectorBase.RootDir, "staging"), nil
-}
-
-// SealedDir satisfies node.SectorDirs
-func (r *FSRepo) SealedDir() (string, error) {
-	// Default is to keep sector data alongside node repo data.
-	if r.cfg.SectorBase.RootDir == "" {
-		return path.Join(r.homePath, "sectors/sealed"), nil
-	}
-	// If not using default check for writeability
-	if err := checkWritable(r.cfg.SectorBase.RootDir); err != nil {
-		return "", nil
-	}
-	return path.Join(r.cfg.SectorBase.RootDir, "sealed"), nil
-}
-
 // SetAPIAddr writes the address to the API file. SetAPIAddr expects parameter
 // `port` to be of the form `:<port>`.
 func (r *FSRepo) SetAPIAddr(maddr string) error {
@@ -518,8 +465,8 @@ func (r *FSRepo) SetAPIAddr(maddr string) error {
 	return nil
 }
 
-func APIAddrFromHome(homePath string) (string, error) {
-	repoPath, err := homedir.Expand(filepath.Join(GetHomeDir(homePath), "repo"))
+func APIAddrFromRepoPath(repoPath string) (string, error) {
+	repoPath, err := homedir.Expand(repoPath)
 	if err != nil {
 		return "", errors.Wrap(err, fmt.Sprintf("can't resolve local repo path %s", repoPath))
 	}

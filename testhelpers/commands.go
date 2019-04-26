@@ -547,7 +547,7 @@ func (td *TestDaemon) CreateAddress() string {
 
 // Config is a helper to read out the config of the deamon
 func (td *TestDaemon) Config() *config.Config {
-	cfg, err := config.ReadFile(filepath.Join(filepath.Join(td.repoDir, "repo"), "config.json"))
+	cfg, err := config.ReadFile(filepath.Join(td.repoDir, "config.json"))
 	require.NoError(td.test, err)
 	return cfg
 }

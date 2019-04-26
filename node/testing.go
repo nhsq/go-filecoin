@@ -261,7 +261,7 @@ func GenNode(t *testing.T, tno *TestNodeOptions) *Node {
 	}
 	require.NoError(t, err)
 
-	localCfgOpts, err := OptionsFromRepo(r, r)
+	localCfgOpts, err := OptionsFromRepo(r)
 	require.NoError(t, err)
 
 	localCfgOpts = append(localCfgOpts, tno.ConfigOpts...)

@@ -10,7 +10,7 @@ import (
 
 // OptionsFromRepo takes a repo and returns options that configure a node
 // to use the given repo.
-func OptionsFromRepo(r repo.Repo, sr repo.SectorRepo) ([]ConfigOpt, error) {
+func OptionsFromRepo(r repo.Repo) ([]ConfigOpt, error) {
 	sk, err := privKeyFromKeystore(r)
 	if err != nil {
 		return nil, err
@@ -27,7 +27,6 @@ func OptionsFromRepo(r repo.Repo, sr repo.SectorRepo) ([]ConfigOpt, error) {
 
 	dsopt := func(c *Config) error {
 		c.Repo = r
-		c.SectorRepo = sr
 		return nil
 	}
 
