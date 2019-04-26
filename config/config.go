@@ -188,7 +188,7 @@ func newDefaultMessagePoolConfig() *MessagePoolConfig {
 // sector storage.
 type SectorBaseConfig struct {
 	// RootDir is the path to the root directory holding sector data.
-	// If empty the default of <repopath>/sectors is implied.
+	// If empty the default of <homedir>/sectors is implied.
 	RootDir string `json:"rootdir"`
 }
 
